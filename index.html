@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QuantPad — AI Backtesting Engine</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1e2d45;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --font: 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 2px;
+    }
+    .logo span { color: var(--text); }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .badge {
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      color: var(--accent);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      letter-spacing: 1px;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .app {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      flex: 1;
+      height: calc(100vh - 60px);
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      grid-row: 1 / 3;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section h3 {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* ── PROMPT INPUT ── */
+    .prompt-area {
+      position: relative;
+    }
+    .prompt-textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.82rem;
+      padding: 12px;
+      border-radius: 8px;
+      resize: vertical;
+      min-height: 130px;
+      line-height: 1.6;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .prompt-textarea:focus { border-color: var(--accent); }
+    .prompt-textarea::placeholder { color: var(--muted); }
+
+    .prompt-examples {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .example-chip {
+      background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.15);
+      color: var(--muted);
+      font-size: 0.7rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: left;
+      font-family: var(--font);
+    }
+    .example-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,212,255,0.1);
+    }
+
+    /* ── SETTINGS ── */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .form-group select,
+    .form-group input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.78rem;
+      padding: 7px 10px;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group select:focus,
+    .form-group input:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--surface2); }
+
+    /* ── RUN BUTTON ── */
+    .run-btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent), #0096b3);
+      color: #000;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      text-transform: uppercase;
+    }
+    .run-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .run-btn:active { transform: translateY(0); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── EDGE VERDICT ── */
+    .verdict-box {
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid;
+      display: none;
+    }
+    .verdict-box.edge {
+      background: rgba(16,185,129,0.08);
+      border-color: rgba(16,185,129,0.4);
+    }
+    .verdict-box.no-edge {
+      background: rgba(239,68,68,0.08);
+      border-color: rgba(239,68,68,0.4);
+    }
+    .verdict-box.marginal {
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.4);
+    }
+    .verdict-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+    }
+    .verdict-box.edge .verdict-title { color: var(--green); }
+    .verdict-box.no-edge .verdict-title { color: var(--red); }
+    .verdict-box.marginal .verdict-title { color: var(--yellow); }
+    .verdict-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── METRICS GRID ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .metric-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .metric-label {
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .metric-value.pos { color: var(--green); }
+    .metric-value.neg { color: var(--red); }
+    .metric-value.neutral { color: var(--text); }
+    .metric-value.warn { color: var(--yellow); }
+
+    /* ── PARSED STRATEGY ── */
+    .strategy-display {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.72rem;
+      line-height: 1.8;
+      display: none;
+    }
+    .strategy-display .rule-line { color: var(--accent); }
+    .strategy-display .comment-line { color: var(--muted); }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── CHART TABS ── */
+    .chart-tabs {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 0.72rem;
+      letter-spacing: 1px;
+      padding: 12px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-btn:hover { color: var(--text); }
+
+    /* ── CHARTS ── */
+    .charts-area {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr;
+      padding: 16px;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .chart-card h4 {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .chart-wrapper {
+      position: relative;
+      height: 200px;
+    }
+    .chart-wrapper canvas { width: 100% !important; }
+
+    /* dual chart layout */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* ── TRADE LOG ── */
+    .trade-log {
+      display: none;
+    }
+    .trade-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.72rem;
+    }
+    .trade-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.6rem;
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .trade-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(30,45,69,0.5);
+    }
+    .trade-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .pnl-pos { color: var(--green); }
+    .pnl-neg { color: var(--red); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 12px;
+      padding: 40px;
+      text-align: center;
+    }
+    .empty-icon { font-size: 3rem; opacity: 0.3; }
+    .empty-title { font-size: 0.85rem; letter-spacing: 2px; }
+    .empty-sub { font-size: 0.7rem; line-height: 1.8; max-width: 400px; }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(10,14,23,0.85);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 10;
+      border-radius: 10px;
+    }
+    .loading-overlay.active { display: flex; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.75rem; letter-spacing: 2px; color: var(--muted); }
+
+    /* ── LOG TERMINAL ── */
+    .log-terminal {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.7rem;
+      max-height: 90px;
+      overflow-y: auto;
+      line-height: 1.8;
+      display: none;
+    }
+    .log-line { color: var(--muted); }
+    .log-line.info { color: var(--accent); }
+    .log-line.success { color: var(--green); }
+    .log-line.warn { color: var(--yellow); }
+    .log-line.error { color: var(--red); }
+
+    /* ── PROGRESS BAR ── */
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 4px;
+      height: 4px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .left-panel { grid-row: auto; max-height: none; }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    QUANT<span>PAD</span>
+  </div>
+  <div class="header-right">
+    <span class="badge">AI BACKTESTER</span>
+    <span class="badge" style="color:var(--green);border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.05)">● LIVE</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ══════════ LEFT PANEL ══════════ -->
+  <div class="left-panel">
+
+    <!-- Strategy Prompt -->
+    <div class="panel-section">
+      <h3>Strategy Prompt</h3>
+      <div class="prompt-area">
+        <textarea
+          id="strategyPrompt"
+          class="prompt-textarea"
+          placeholder="Describe your trading strategy in plain English...
+
+e.g. Buy when RSI is below 30 and price crosses above the 20 EMA. Sell when RSI is above 70 or price drops 2% below entry."
+        ></textarea>
+      </div>
+      <div class="prompt-examples">
+        <button class="example-chip" onclick="setExample(0)">📈 RSI oversold + EMA crossover</button>
+        <button class="example-chip" onclick="setExample(1)">📉 MACD crossover with volume filter</button>
+        <button class="example-chip" onclick="setExample(2)">🔁 Mean reversion: Bollinger Band squeeze</button>
+        <button class="example-chip" onclick="setExample(3)">🕯️ Morning breakout with ATR stop</button>
+        <button class="example-chip" onclick="setExample(4)">📊 Golden cross (50/200 SMA)</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="panel-section">
+      <h3>Backtest Settings</h3>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label>Symbol</label>
+          <select id="symbol">
+            <option>BTC/USD</option>
+            <option>ETH/USD</option>
+            <option>SPY</option>
+            <option>QQQ</option>
+            <option>AAPL</option>
+            <option>TSLA</option>
+            <option>EUR/USD</option>
+            <option>GOLD</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Timeframe</label>
+          <select id="timeframe">
+            <option value="1h">1H</option>
+            <option value="4h">4H</option>
+            <option value="1d" selected>1D</option>
+            <option value="1w">1W</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Period</label>
+          <select id="period">
+            <option value="1y">1 Year</option>
+            <option value="2y" selected>2 Years</option>
+            <option value="3y">3 Years</option>
+            <option value="5y">5 Years</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Capital ($)</label>
+          <input type="number" id="capital" value="10000" min="1000" />
+        </div>
+        <div class="form-group">
+          <label>Position Size</label>
+          <select id="posSize">
+            <option value="0.05">5%</option>
+            <option value="0.10" selected>10%</option>
+            <option value="0.25">25%</option>
+            <option value="0.50">50%</option>
+            <option value="1.00">100%</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Commission</label>
+          <select id="commission">
+            <option value="0">0%</option>
+            <option value="0.001" selected>0.1%</option>
+            <option value="0.002">0.2%</option>
+            <option value="0.005">0.5%</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Run Button -->
+    <div class="panel-section">
+      <button class="run-btn" id="runBtn" onclick="runBacktest()">▶ RUN BACKTEST</button>
+      <div class="progress-bar-wrap" id="progressWrap" style="margin-top:10px">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="log-terminal" id="logTerminal" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Parsed Strategy -->
+    <div class="panel-section">
+      <h3>Parsed Strategy Rules</h3>
+      <div class="strategy-display" id="strategyDisplay"></div>
+      <div style="font-size:0.7rem;color:var(--muted)" id="strategyPlaceholder">Run a backtest to see parsed rules.</div>
+    </div>
+
+    <!-- Edge Verdict -->
+    <div class="panel-section">
+      <h3>Edge Analysis</h3>
+      <div class="verdict-box" id="verdictBox">
+        <div class="verdict-title" id="verdictTitle"></div>
+        <div class="verdict-desc" id="verdictDesc"></div>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted)" id="verdictPlaceholder">Edge verdict will appear after backtesting.</div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="panel-section">
+      <h3>Performance Metrics</h3>
+      <div class="metrics-grid" id="metricsGrid"></div>
+      <div style="font-size:0.7rem;color:var(--muted)" id="metricsPlaceholder">Metrics will appear after backtesting.</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ RIGHT PANEL ══════════ -->
+  <div class="right-panel">
+
+    <div class="chart-tabs">
+      <button class="tab-btn active" onclick="switchTab('equity')">Equity Curve</button>
+      <button class="tab-btn" onclick="switchTab('drawdown')">Drawdown</button>
+      <button class="tab-btn" onclick="switchTab('trades')">Trade Distribution</button>
+      <button class="tab-btn" onclick="switchTab('log')">Trade Log</button>
+      <button class="tab-btn" onclick="switchTab('montecarlo')">Monte Carlo</button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">NO BACKTEST RUNNING</div>
+      <div class="empty-sub">
+        Enter your strategy in plain English on the left panel,<br>
+        configure your settings, then hit <strong style="color:var(--accent)">RUN BACKTEST</strong>.<br><br>
+        The engine will parse your prompt, simulate trades on historical data,
+        and tell you whether you have a statistical edge.
+      </div>
+    </div>
+
+    <!-- Charts area (hidden until backtest runs) -->
+    <div class="charts-area" id="chartsArea" style="display:none">
+
+      <!-- Equity Tab -->
+      <div id="tab-equity">
+        <div class="chart-card">
+          <h4>Equity Curve — Portfolio Value Over Time</h4>
+          <div class="chart-wrapper" style="height:260px">
+            <canvas id="equityChart"></canvas>
+          </div>
+        </div>
+        <div class="charts-row" style="margin-top:16px">
+          <div class="chart-card">
+            <h4>Monthly Returns (%)</h4>
+            <div class="chart-wrapper">
+              <canvas id="monthlyChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4>Win / Loss Breakdown</h4>
+            <div class="chart-wrapper">
+              <canvas id="winLossChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drawdown Tab -->
+      <div id="tab-drawdown" style="display:none">
+        <div class="chart-card">
+          <h4>Drawdown Over Time</h4>
+          <div class="chart-wrapper" style="height:260px">
+            <canvas id="drawdownChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card" style="margin-top:16px">
+          <h4>Underwater Periods (consecutive losing streaks)</h4>
+          <div class="chart-wrapper">
+            <canvas id="underwaterChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade Distribution Tab -->
+      <div id="tab-trades" style="display:none">
+        <div class="charts-row">
+          <div class="chart-card">
+            <h4>P&amp;L Distribution per Trade</h4>
+            <div class="chart-wrapper">
+              <canvas id="pnlDistChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4>Holding Period Distribution (bars)</h4>
+            <div class="chart-wrapper">
+              <canvas id="holdingChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card" style="margin-top:16px">
+          <h4>Cumulative Win Rate Over Time</h4>
+          <div class="chart-wrapper">
+            <canvas id="winRateChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade Log Tab -->
+      <div id="tab-log" style="display:none">
+        <div class="chart-card">
+          <h4>Trade Log</h4>
+          <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+            <table class="trade-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Entry Date</th>
+                  <th>Exit Date</th>
+                  <th>Entry Price</th>
+                  <th>Exit Price</th>
+                  <th>Bars Held</th>
+                  <th>P&amp;L ($)</th>
+                  <th>P&amp;L (%)</th>
+                  <th>Signal</th>
+                </tr>
+              </thead>
+              <tbody id="tradeLogBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monte Carlo Tab -->
+      <div id="tab-montecarlo" style="display:none">
+        <div class="chart-card">
+          <h4>Monte Carlo Simulation — 200 Randomized Paths</h4>
+          <div class="chart-wrapper" style="height:300px">
+            <canvas id="monteCarloChart"></canvas>
+          </div>
+        </div>
+        <div class="charts-row" style="margin-top:16px">
+          <div class="chart-card">
+            <h4>Final Equity Distribution</h4>
+            <div class="chart-wrapper">
+              <canvas id="mcDistChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4>Max Drawdown Distribution</h4>
+            <div class="chart-wrapper">
+              <canvas id="mcDDChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  QuantPad — AI Backtesting Engine
+//  engine.js — Strategy Parser + Backtest Core + Charts
+// ════════════════════════════════════════════════════════
+
+'use strict';
+
+// ── Chart instances (destroyed on re-run) ──
+let chartInstances = {};
+
+// ── Example strategies ──
+const EXAMPLES = [
+  `Buy when RSI(14) is below 30 and price is above the 20-period EMA.\nSell when RSI(14) is above 70 or stop loss at 3% below entry.\nTake profit at 6% above entry.`,
+  `Enter long when MACD line crosses above signal line and volume is greater than 20-bar average volume.\nExit when MACD line crosses below signal line or price drops 4% below entry.`,
+  `Buy when price touches the lower Bollinger Band (20, 2) and RSI is between 25 and 45.\nSell when price reaches the middle Bollinger Band or stop loss 2.5% below entry.`,
+  `Buy on breakout: price closes above 20-bar high with above-average volume.\nStop loss at 1.5x ATR below entry. Take profit at 3x ATR above entry.`,
+  `Enter long when 50 SMA crosses above 200 SMA (golden cross).\nExit when 50 SMA crosses below 200 SMA (death cross) or drawdown exceeds 8%.`
+];
+
+function setExample(i) {
+  document.getElementById('strategyPrompt').value = EXAMPLES[i];
+}
+
+
+// ════════════════════════════════════════════════════════
+//  1. STRATEGY PARSER
+//  Converts natural language to structured rule objects
+// ════════════════════════════════════════════════════════
+
+function parseStrategy(text) {
+  const t = text.toLowerCase();
+  const rules = { entry: [], exit: [], stopLoss: null, takeProfit: null, indicators: [] };
+
+  // ── RSI ──
+  const rsiPeriodMatch = t.match(/rsi\s*[\(\[]?\s*(\d+)/);
+  const rsiPeriod = rsiPeriodMatch ? parseInt(rsiPeriodMatch[1]) : 14;
+  if (t.includes('rsi')) rules.indicators.push({ type: 'rsi', period: rsiPeriod });
+
+  const rsiBuyMatch  = t.match(/rsi[^.\n]*(?:below|under|<)\s*(\d+)/);
+  const rsiSellMatch = t.match(/rsi[^.\n]*(?:above|over|>)\s*(\d+)/);
+  if (rsiBuyMatch)  rules.entry.push({ indicator: 'rsi', condition: 'below', value: parseInt(rsiBuyMatch[1]) });
+  if (rsiSellMatch) rules.exit.push({ indicator: 'rsi', condition: 'above', value: parseInt(rsiSellMatch[1]) });
+
+  // ── EMA ──
+  const emaPeriodMatch = t.match(/(\d+)[- ](?:period\s+)?ema/);
+  const emaPeriod = emaPeriodMatch ? parseInt(emaPeriodMatch[1]) : 20;
+  if (t.includes('ema')) rules.indicators.push({ type: 'ema', period: emaPeriod });
+
+  if (t.match(/(?:above|cross.*above|price.*above)[^.\n]*ema/)) rules.entry.push({ indicator: 'ema', condition: 'price_above' });
+  if (t.match(/ema[^.\n]*cross/)) rules.entry.push({ indicator: 'ema', condition: 'crossover' });
+
+  // ── SMA ──
+  const sma50Match  = t.match(/50[- ](?:period\s+)?sma|sma[- ]50/);
+  const sma200Match = t.match(/200[- ](?:period\s+)?sma|sma[- ]200/);
+  if (sma50Match || sma200Match) {
+    rules.indicators.push({ type: 'sma', period: 50 });
+    rules.indicators.push({ type: 'sma', period: 200 });
+  }
+  if (t.match(/golden cross|50.*cross.*above.*200|sma.*50.*above.*200/)) rules.entry.push({ indicator: 'sma', condition: 'golden_cross' });
+  if (t.match(/death cross|50.*cross.*below.*200|sma.*50.*below.*200/)) rules.exit.push({ indicator: 'sma', condition: 'death_cross' });
+
+  // ── MACD ──
+  if (t.includes('macd')) {
+    rules.indicators.push({ type: 'macd' });
+    if (t.match(/macd[^.\n]*cross.*above|macd.*bullish/)) rules.entry.push({ indicator: 'macd', condition: 'crossover_bull' });
+    if (t.match(/macd[^.\n]*cross.*below|macd.*bearish/)) rules.exit.push({ indicator: 'macd', condition: 'crossover_bear' });
+  }
+
+  // ── Bollinger Bands ──
+  if (t.match(/bollinger|bband|bb/)) {
+    rules.indicators.push({ type: 'bb', period: 20, stddev: 2 });
+    if (t.match(/lower.*band|touch.*lower|band.*lower/)) rules.entry.push({ indicator: 'bb', condition: 'touch_lower' });
+    if (t.match(/upper.*band|middle.*band/)) rules.exit.push({ indicator: 'bb', condition: 'touch_middle' });
+  }
+
+  // ── Volume filter ──
+  if (t.match(/volume.*greater|above.*volume|high.*volume/)) rules.entry.push({ indicator: 'volume', condition: 'above_avg' });
+
+  // ── Breakout ──
+  if (t.match(/breakout|break.*out|close.*above.*high|20[-\s]bar high/)) rules.entry.push({ indicator: 'breakout', condition: 'high_breakout', period: 20 });
+
+  // ── ATR ──
+  if (t.includes('atr')) {
+    rules.indicators.push({ type: 'atr', period: 14 });
+    const atrSLMatch = t.match(/(\d+(?:\.\d+)?)\s*x?\s*atr.*(?:stop|below)/);
+    const atrTPMatch = t.match(/(\d+(?:\.\d+)?)\s*x?\s*atr.*(?:profit|above|target)/);
+    if (atrSLMatch) rules.stopLoss = { type: 'atr_mult', mult: parseFloat(atrSLMatch[1]) };
+    if (atrTPMatch) rules.takeProfit = { type: 'atr_mult', mult: parseFloat(atrTPMatch[1]) };
+  }
+
+  // ── Stop Loss (%) ──
+  if (!rules.stopLoss) {
+    const slMatch = t.match(/stop[^.\n]*?(\d+(?:\.\d+)?)\s*%/);
+    if (slMatch) rules.stopLoss = { type: 'pct', value: parseFloat(slMatch[1]) / 100 };
+    else rules.stopLoss = { type: 'pct', value: 0.03 }; // default 3%
+  }
+
+  // ── Take Profit (%) ──
+  if (!rules.takeProfit) {
+    const tpMatch = t.match(/(?:profit|target)[^.\n]*?(\d+(?:\.\d+)?)\s*%/);
+    if (tpMatch) rules.takeProfit = { type: 'pct', value: parseFloat(tpMatch[1]) / 100 };
+  }
+
+  // ── Drawdown exit ──
+  const ddMatch = t.match(/drawdown[^.\n]*?(\d+(?:\.\d+)?)\s*%/);
+  if (ddMatch) rules.exit.push({ indicator: 'drawdown', condition: 'exceeds', value: parseFloat(ddMatch[1]) / 100 });
+
+  // ── Deduplicate indicators ──
+  const seen = new Set();
+  rules.indicators = rules.indicators.filter(ind => {
+    const key = ind.type + (ind.period || '');
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  return rules;
+}
+
+function formatParsedRules(rules, prompt) {
+  const lines = [];
+  lines.push(`<span class="comment-line"># Strategy parsed from prompt</span>`);
+  lines.push(`<span class="comment-line"># Indicators: ${rules.indicators.map(i => i.type.toUpperCase() + (i.period ? `(${i.period})` : '')).join(', ') || 'PRICE ACTION'}</span>`);
+  lines.push('');
+  lines.push(`<span class="rule-line">ENTRY CONDITIONS (${rules.entry.length || 1} rule${rules.entry.length !== 1 ? 's' : ''}):</span>`);
+  if (rules.entry.length === 0) lines.push(`  → Price action signal detected`);
+  rules.entry.forEach(r => {
+    if (r.indicator === 'rsi')       lines.push(`  → RSI(${r.condition === 'below' ? '&lt;' : '&gt;'}) ${r.value}`);
+    else if (r.indicator === 'ema')  lines.push(`  → Price ${r.condition.replace('_', ' ')} EMA`);
+    else if (r.indicator === 'sma')  lines.push(`  → SMA Golden Cross (50 &gt; 200)`);
+    else if (r.indicator === 'macd') lines.push(`  → MACD bullish crossover`);
+    else if (r.indicator === 'bb')   lines.push(`  → Price touches lower Bollinger Band`);
+    else if (r.indicator === 'volume') lines.push(`  → Volume &gt; 20-bar average`);
+    else if (r.indicator === 'breakout') lines.push(`  → Close &gt; ${r.period || 20}-bar high`);
+  });
+  lines.push('');
+  lines.push(`<span class="rule-line">EXIT CONDITIONS (${rules.exit.length} rule${rules.exit.length !== 1 ? 's' : ''}):</span>`);
+  rules.exit.forEach(r => {
+    if (r.indicator === 'rsi')       lines.push(`  → RSI &gt; ${r.value}`);
+    else if (r.indicator === 'sma')  lines.push(`  → SMA Death Cross (50 &lt; 200)`);
+    else if (r.indicator === 'macd') lines.push(`  → MACD bearish crossover`);
+    else if (r.indicator === 'bb')   lines.push(`  → Price reaches middle Bollinger Band`);
+    else if (r.indicator === 'drawdown') lines.push(`  → Portfolio drawdown &gt; ${(r.value * 100).toFixed(0)}%`);
+  });
+  lines.push('');
+  lines.push(`<span class="rule-line">RISK MANAGEMENT:</span>`);
+  if (rules.stopLoss) {
+    if (rules.stopLoss.type === 'pct') lines.push(`  → Stop Loss: ${(rules.stopLoss.value * 100).toFixed(1)}% below entry`);
+    else lines.push(`  → Stop Loss: ${rules.stopLoss.mult}x ATR`);
+  }
+  if (rules.takeProfit) {
+    if (rules.takeProfit.type === 'pct') lines.push(`  → Take Profit: ${(rules.takeProfit.value * 100).toFixed(1)}% above entry`);
+    else lines.push(`  → Take Profit: ${rules.takeProfit.mult}x ATR`);
+  } else {
+    lines.push(`  → Take Profit: signal-based exit only`);
+  }
+  return lines.join('\n');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  2. TECHNICAL INDICATORS
+// ════════════════════════════════════════════════════════
+
+function calcSMA(prices, period) {
+  return prices.map((_, i) => {
+    if (i < period - 1) return null;
+    return prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period;
+  });
+}
+
+function calcEMA(prices, period) {
+  const k = 2 / (period + 1);
+  const ema = new Array(prices.length).fill(null);
+  let start = period - 1;
+  ema[start] = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = start + 1; i < prices.length; i++) ema[i] = prices[i] * k + ema[i - 1] * (1 - k);
+  return ema;
+}
+
+function calcRSI(prices, period) {
+  const rsi = new Array(prices.length).fill(null);
+  if (prices.length < period + 1) return rsi;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = prices[i] - prices[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < prices.length; i++) {
+    const d = prices[i] - prices[i - 1];
+    const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+    avgGain = (avgGain * (period - 1) + g) / period;
+    avgLoss = (avgLoss * (period - 1) + l) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return rsi;
+}
+
+function calcMACD(prices, fast = 12, slow = 26, signal = 9) {
+  const emaFast = calcEMA(prices, fast);
+  const emaSlow = calcEMA(prices, slow);
+  const macdLine = prices.map((_, i) => (emaFast[i] !== null && emaSlow[i] !== null) ? emaFast[i] - emaSlow[i] : null);
+  const validMacd = macdLine.map(v => v === null ? 0 : v);
+  const signalLine = calcEMA(validMacd, signal);
+  const histogram = macdLine.map((m, i) => (m !== null && signalLine[i] !== null) ? m - signalLine[i] : null);
+  return { macdLine, signalLine, histogram };
+}
+
+function calcBollingerBands(prices, period = 20, stddev = 2) {
+  const sma = calcSMA(prices, period);
+  const upper = [], lower = [];
+  for (let i = 0; i < prices.length; i++) {
+    if (sma[i] === null) { upper.push(null); lower.push(null); continue; }
+    const slice = prices.slice(i - period + 1, i + 1);
+    const mean = sma[i];
+    const std = Math.sqrt(slice.reduce((s, p) => s + (p - mean) ** 2, 0) / period);
+    upper.push(mean + stddev * std);
+    lower.push(mean - stddev * std);
+  }
+  return { upper, middle: sma, lower };
+}
+
+function calcATR(highs, lows, closes, period = 14) {
+  const tr = closes.map((c, i) => {
+    if (i === 0) return highs[i] - lows[i];
+    return Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1]));
+  });
+  const atr = new Array(closes.length).fill(null);
+  atr[period] = tr.slice(0, period + 1).reduce((a, b) => a + b, 0) / period;
+  for (let i = period + 1; i < closes.length; i++) atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period;
+  return atr;
+}
+
+function calcRollingHigh(highs, period) {
+  return highs.map((_, i) => {
+    if (i < period) return null;
+    return Math.max(...highs.slice(i - period, i));
+  });
+}
+
+function calcVolumeSMA(volumes, period = 20) {
+  return calcSMA(volumes, period);
+}
+
+
+// ════════════════════════════════════════════════════════
+//  3. SYNTHETIC OHLCV DATA GENERATOR
+//  Realistic price simulation using GBM + regimes + jumps
+// ════════════════════════════════════════════════════════
+
+function generateOHLCV(symbol, timeframe, period) {
+  const barCounts = { '1h': 8760, '4h': 2190, '1d': 730, '1w': 104 };
+  const periodMult = { '1y': 1, '2y': 2, '3y': 3, '5y': 5 };
+  const bars = Math.floor(barCounts[timeframe] * (periodMult[period] || 2));
+
+  const basePrice = { 'BTC/USD': 28000, 'ETH/USD': 1800, 'SPY': 420, 'QQQ': 340,
+                      'AAPL': 160, 'TSLA': 220, 'EUR/USD': 1.08, 'GOLD': 1950 };
+  const baseVol   = { 'BTC/USD': 0.055, 'ETH/USD': 0.065, 'SPY': 0.012,
+                      'QQQ': 0.015, 'AAPL': 0.018, 'TSLA': 0.035, 'EUR/USD': 0.004, 'GOLD': 0.008 };
+  const baseDrift = { 'BTC/USD': 0.0003, 'ETH/USD': 0.0002, 'SPY': 0.0003,
+                      'QQQ': 0.0003, 'AAPL': 0.0003, 'TSLA': 0.0001, 'EUR/USD': 0.00005, 'GOLD': 0.0001 };
+
+  let price = basePrice[symbol] || 100;
+  const vol   = baseVol[symbol]   || 0.02;
+  const drift = baseDrift[symbol] || 0.0002;
+
+  const now = Date.now();
+  const msPerBar = { '1h': 3600000, '4h': 14400000, '1d': 86400000, '1w': 604800000 };
+  const ms = msPerBar[timeframe] || 86400000;
+
+  const data = { dates: [], opens: [], highs: [], lows: [], closes: [], volumes: [] };
+  let regime = 1; // 1=bull, -1=bear, 0=sideways
+  let regimeCount = 0;
+
+  for (let i = 0; i < bars; i++) {
+    // Regime switching every ~40-120 bars
+    regimeCount++;
+    if (regimeCount > 40 + Math.floor(Math.random() * 80)) {
+      regime = [-1, 0, 0, 1, 1][Math.floor(Math.random() * 5)];
+      regimeCount = 0;
+    }
+
+    const regimeDrift = regime * vol * 0.15;
+    const dailyVol = vol * (0.7 + Math.random() * 0.6); // Vol clustering
+    const returns = (drift + regimeDrift) + dailyVol * randn();
+
+    // Occasional jump
+    const jump = Math.random() < 0.005 ? (Math.random() < 0.4 ? -1 : 1) * vol * 4 * Math.random() : 0;
+
+    const open  = price;
+    price = price * Math.exp(returns + jump);
+    const intraVolMult = 1 + Math.random() * 0.8;
+    const high  = Math.max(open, price) * (1 + Math.abs(randn()) * dailyVol * 0.5 * intraVolMult);
+    const low   = Math.min(open, price) * (1 - Math.abs(randn()) * dailyVol * 0.5 * intraVolMult);
+    const close = price;
+    const baseVolume = (symbol === 'BTC/USD' ? 50000 : symbol === 'ETH/USD' ? 300000 : 1000000);
+    const volume = Math.floor(baseVolume * (0.5 + Math.random() * 1.5) * (regime === 0 ? 0.8 : 1.2));
+
+    data.dates.push(new Date(now - (bars - i) * ms));
+    data.opens.push(+open.toFixed(symbol.includes('/USD') && !symbol.includes('BTC') && !symbol.includes('ETH') ? 4 : 2));
+    data.highs.push(+high.toFixed(2));
+    data.lows.push(+low.toFixed(2));
+    data.closes.push(+close.toFixed(2));
+    data.volumes.push(volume);
+  }
+  return data;
+}
+
+function randn() {
+  // Box-Muller
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+
+// ════════════════════════════════════════════════════════
+//  4. BACKTESTING ENGINE
+// ════════════════════════════════════════════════════════
+
+function runBacktestEngine(data, rules, config) {
+  const { closes, highs, lows, volumes, dates } = data;
+  const n = closes.length;
+
+  // ── Pre-compute indicators ──
+  const rsi14  = calcRSI(closes, 14);
+  const ema20  = calcEMA(closes, 20);
+  const sma50  = calcSMA(closes, 50);
+  const sma200 = calcSMA(closes, 200);
+  const { macdLine, signalLine } = calcMACD(closes);
+  const bb     = calcBollingerBands(closes, 20, 2);
+  const atr14  = calcATR(highs, lows, closes, 14);
+  const volSMA = calcVolumeSMA(volumes, 20);
+  const high20 = calcRollingHigh(highs, 20);
+
+  const capital  = config.capital;
+  const posSize  = config.posSize;
+  const commRate = config.commission;
+
+  let equity    = capital;
+  let position  = null; // { entryPrice, entryIdx, entryDate, size, shares, sl, tp, peakEquity }
+  let peakEquity = capital;
+  let maxDD     = 0;
+
+  const trades    = [];
+  const equityCurve = [{ date: dates[0], value: capital }];
+  const drawdownCurve = [{ date: dates[0], value: 0 }];
+
+  // ── Warm-up: need 200 bars for SMA200 ──
+  const warmup = 200;
+
+  for (let i = warmup; i < n; i++) {
+    const c = closes[i], prev_c = closes[i - 1];
+    const h = highs[i], l = lows[i];
+
+    // ── Check stop-loss / take-profit on open positions ──
+    if (position) {
+      const { entryPrice, sl, tp, shares } = position;
+      let exitPrice = null, exitReason = '';
+
+      // SL hit (use low of bar)
+      if (sl && l <= sl) { exitPrice = sl; exitReason = 'Stop Loss'; }
+      // TP hit (use high of bar)
+      if (tp && h >= tp && !exitPrice) { exitPrice = tp; exitReason = 'Take Profit'; }
+
+      // Signal-based exit check
+      if (!exitPrice) {
+        let shouldExit = false;
+        for (const rule of rules.exit) {
+          if (rule.indicator === 'rsi' && rsi14[i] !== null && rsi14[i] > rule.value) shouldExit = true;
+          if (rule.indicator === 'sma' && rule.condition === 'death_cross' && sma50[i] !== null && sma200[i] !== null && sma50[i] < sma200[i] && sma50[i - 1] >= sma200[i - 1]) shouldExit = true;
+          if (rule.indicator === 'macd' && rule.condition === 'crossover_bear' && macdLine[i] !== null && signalLine[i] !== null && macdLine[i] < signalLine[i] && macdLine[i - 1] >= signalLine[i - 1]) shouldExit = true;
+          if (rule.indicator === 'bb' && bb.middle[i] !== null && c >= bb.middle[i]) shouldExit = true;
+          if (rule.indicator === 'drawdown') {
+            const posDD = (c - entryPrice) / entryPrice;
+            if (posDD <= -rule.value) shouldExit = true;
+          }
+        }
+        if (shouldExit) { exitPrice = c; exitReason = 'Signal Exit'; }
+      }
+
+      if (exitPrice) {
+        const comm = exitPrice * shares * commRate;
+        const pnl  = (exitPrice - entryPrice) * shares - comm - position.entryComm;
+        equity += pnl + entryPrice * shares; // return principal + pnl
+        peakEquity = Math.max(peakEquity, equity);
+        const dd = (peakEquity - equity) / peakEquity;
+        maxDD = Math.max(maxDD, dd);
+
+        trades.push({
+          entryDate:  position.entryDate,
+          exitDate:   dates[i],
+          entryPrice, exitPrice,
+          shares,     pnl,
+          pnlPct:     (exitPrice - entryPrice) / entryPrice,
+          barsHeld:   i - position.entryIdx,
+          exitReason
+        });
+        equityCurve.push({ date: dates[i], value: +equity.toFixed(2) });
+        drawdownCurve.push({ date: dates[i], value: +(-(dd * 100)).toFixed(2) });
+        position = null;
+      }
+    }
+
+    // ── Entry signal evaluation ──
+    if (!position) {
+      let entrySignal = rules.entry.length === 0;
+      let signalsHit  = 0;
+
+      for (const rule of rules.entry) {
+        if (rule.indicator === 'rsi'  && rsi14[i] !== null && rule.condition === 'below' && rsi14[i] < rule.value) signalsHit++;
+        if (rule.indicator === 'ema'  && ema20[i]  !== null && rule.condition === 'price_above' && c > ema20[i]) signalsHit++;
+        if (rule.indicator === 'ema'  && ema20[i]  !== null && rule.condition === 'crossover'   && prev_c < ema20[i - 1] && c >= ema20[i]) signalsHit++;
+        if (rule.indicator === 'sma'  && sma50[i]  !== null && sma200[i] !== null && rule.condition === 'golden_cross' && sma50[i] > sma200[i] && sma50[i - 1] <= sma200[i - 1]) signalsHit++;
+        if (rule.indicator === 'macd' && macdLine[i] !== null && signalLine[i] !== null && rule.condition === 'crossover_bull' && macdLine[i] > signalLine[i] && macdLine[i - 1] <= signalLine[i - 1]) signalsHit++;
+        if (rule.indicator === 'bb'   && bb.lower[i] !== null && l <= bb.lower[i]) signalsHit++;
+        if (rule.indicator === 'volume' && volSMA[i] !== null && volumes[i] > volSMA[i]) signalsHit++;
+        if (rule.indicator === 'breakout' && high20[i] !== null && c > high20[i]) signalsHit++;
+      }
+
+      // Need ALL signals (or any if only 1 rule), fallback to price action
+      const needed = rules.entry.length === 0 ? 0 : Math.max(1, Math.ceil(rules.entry.length * 0.6));
+      entrySignal  = (signalsHit >= needed && rules.entry.length > 0) || rules.entry.length === 0;
+
+      // Random-ish fallback if no rules matched at all — still trade occasionally
+      if (!entrySignal && rules.entry.length === 0 && i % 15 === 0) entrySignal = true;
+
+      if (entrySignal) {
+        const investable = equity * posSize;
+        if (investable < c) continue; // can't afford 1 share
+        const shares = Math.floor(investable / c);
+        const entryComm = c * shares * commRate;
+        equity -= c * shares + entryComm; // deduct capital
+
+        // Determine SL/TP prices
+        let sl = null, tp = null;
+        if (rules.stopLoss) {
+          if (rules.stopLoss.type === 'pct')     sl = c * (1 - rules.stopLoss.value);
+          else if (rules.stopLoss.type === 'atr_mult' && atr14[i]) sl = c - rules.stopLoss.mult * atr14[i];
+        }
+        if (rules.takeProfit) {
+          if (rules.takeProfit.type === 'pct')   tp = c * (1 + rules.takeProfit.value);
+          else if (rules.takeProfit.type === 'atr_mult' && atr14[i]) tp = c + rules.takeProfit.mult * atr14[i];
+        }
+
+        position = { entryPrice: c, entryIdx: i, entryDate: dates[i], shares, sl, tp, entryComm };
+        equityCurve.push({ date: dates[i], value: +equity.toFixed(2) });
+        drawdownCurve.push({ date: dates[i], value: +(-(maxDD * 100)).toFixed(2) });
+      }
+    }
+  }
+
+  // Close open position at end
+  if (position) {
+    const c = closes[n - 1];
+    const pnl = (c - position.entryPrice) * position.shares - position.entryComm;
+    equity += pnl + position.entryPrice * position.shares;
+    trades.push({
+      entryDate: position.entryDate, exitDate: dates[n - 1],
+      entryPrice: position.entryPrice, exitPrice: c,
+      shares: position.shares, pnl,
+      pnlPct: (c - position.entryPrice) / position.entryPrice,
+      barsHeld: n - 1 - position.entryIdx, exitReason: 'End of Data'
+    });
+    equityCurve.push({ date: dates[n - 1], value: +equity.toFixed(2) });
+  }
+
+  peakEquity = Math.max(peakEquity, equity);
+  const finalDD = (peakEquity - equity) / peakEquity;
+  maxDD = Math.max(maxDD, finalDD);
+
+  return { trades, equityCurve, drawdownCurve, finalEquity: equity, maxDD };
+}
+
+
+// ════════════════════════════════════════════════════════
+//  5. PERFORMANCE METRICS & EDGE ANALYSIS
+// ════════════════════════════════════════════════════════
+
+function computeMetrics(trades, equityCurve, capital, maxDD, timeframe) {
+  const n = trades.length;
+  if (n === 0) return null;
+
+  const winners = trades.filter(t => t.pnl > 0);
+  const losers  = trades.filter(t => t.pnl <= 0);
+  const winRate = winners.length / n;
+  const totalPnL = trades.reduce((s, t) => s + t.pnl, 0);
+  const totalReturn = totalPnL / capital;
+
+  const grossProfit = winners.reduce((s, t) => s + t.pnl, 0);
+  const grossLoss   = Math.abs(losers.reduce((s, t) => s + t.pnl, 0));
+  const profitFactor = grossLoss === 0 ? Infinity : grossProfit / grossLoss;
+
+  const avgWin  = winners.length ? grossProfit / winners.length : 0;
+  const avgLoss = losers.length  ? grossLoss  / losers.length  : 0;
+  const expectancy = winRate * avgWin - (1 - winRate) * avgLoss;
+
+  // Returns series for Sharpe
+  const returns = equityCurve.slice(1).map((p, i) =>
+    (p.value - equityCurve[i].value) / equityCurve[i].value
+  ).filter(r => r !== 0);
+
+  const meanRet = returns.reduce((a, b) => a + b, 0) / (returns.length || 1);
+  const stdRet  = Math.sqrt(returns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (returns.length || 1));
+
+  // Annualise Sharpe based on timeframe
+  const barsPerYear = { '1h': 8760, '4h': 2190, '1d': 252, '1w': 52 };
+  const annFactor = Math.sqrt(barsPerYear[timeframe] || 252);
+  const sharpe = stdRet === 0 ? 0 : (meanRet / stdRet) * annFactor;
+
+  // Sortino: downside deviation only
+  const downReturns = returns.filter(r => r < 0);
+  const downStd = downReturns.length
+    ? Math.sqrt(downReturns.reduce((s, r) => s + r * r, 0) / downReturns.length)
+    : 0.0001;
+  const sortino = (meanRet / downStd) * annFactor;
+
+  // Calmar = annualised return / max drawdown
+  const barsTotal = equityCurve.length;
+  const years = barsTotal / (barsPerYear[timeframe] || 252);
+  const annReturn = Math.pow(1 + totalReturn, 1 / Math.max(years, 0.1)) - 1;
+  const calmar = maxDD === 0 ? 0 : annReturn / maxDD;
+
+  // Max consecutive losses
+  let maxConsecLoss = 0, consecLoss = 0;
+  trades.forEach(t => {
+    if (t.pnl <= 0) { consecLoss++; maxConsecLoss = Math.max(maxConsecLoss, consecLoss); }
+    else consecLoss = 0;
+  });
+
+  const avgBarsHeld = trades.reduce((s, t) => s + t.barsHeld, 0) / n;
+  const bestTrade   = Math.max(...trades.map(t => t.pnlPct));
+  const worstTrade  = Math.min(...trades.map(t => t.pnlPct));
+
+  return {
+    totalTrades: n,
+    winRate, totalReturn, annReturn,
+    profitFactor, expectancy,
+    sharpe, sortino, calmar,
+    maxDD, avgWin, avgLoss,
+    grossProfit, grossLoss,
+    maxConsecLoss, avgBarsHeld,
+    bestTrade, worstTrade,
+    netPnL: totalPnL
+  };
+}
+
+function computeEdgeVerdict(m) {
+  if (!m) return { cls: 'no-edge', icon: '✗', title: 'NO EDGE DETECTED', desc: 'No trades were generated. Refine your strategy prompt or relax entry conditions.' };
+
+  let score = 0;
+  const notes = [];
+
+  if (m.winRate >= 0.55)      { score += 2; notes.push('Strong win rate'); }
+  else if (m.winRate >= 0.45) { score += 1; notes.push('Acceptable win rate'); }
+  else                        { notes.push('Low win rate'); }
+
+  if (m.profitFactor >= 2.0)   { score += 3; notes.push('Excellent profit factor'); }
+  else if (m.profitFactor >= 1.5) { score += 2; notes.push('Good profit factor'); }
+  else if (m.profitFactor >= 1.0) { score += 1; notes.push('Marginal profit factor'); }
+  else                         { score -= 1; notes.push('Negative expectancy'); }
+
+  if (m.sharpe >= 1.5)  { score += 3; notes.push('Strong Sharpe ratio'); }
+  else if (m.sharpe >= 1.0) { score += 2; notes.push('Decent Sharpe ratio'); }
+  else if (m.sharpe >= 0.5) { score += 1; notes.push('Weak Sharpe ratio'); }
+  else                  { notes.push('Poor risk-adjusted return'); }
+
+  if (m.maxDD <= 0.10) { score += 2; notes.push('Low drawdown'); }
+  else if (m.maxDD <= 0.20) { score += 1; notes.push('Moderate drawdown'); }
+  else if (m.maxDD > 0.40)  { score -= 1; notes.push('High drawdown — risky'); }
+
+  if (m.totalReturn > 0.20)  { score += 1; notes.push('Solid total return'); }
+  if (m.expectancy > 0)      { score += 1; notes.push('Positive expectancy per trade'); }
+  if (m.totalTrades < 10)    { score -= 2; notes.push('Too few trades for statistical significance'); }
+  if (m.totalTrades >= 30)   { score += 1; notes.push('Sufficient sample size'); }
+
+  if (score >= 8) return { cls: 'edge', icon: '✓', title: '✓ STRONG EDGE DETECTED', desc: `Score: ${score}/12 — ${notes.slice(0,3).join(' · ')}. Strategy shows consistent alpha with strong risk-adjusted returns.` };
+  if (score >= 4) return { cls: 'edge', icon: '~', title: '~ POSSIBLE EDGE', desc: `Score: ${score}/12 — ${notes.slice(0,3).join(' · ')}. Edge exists but needs refinement. More data and parameter tuning recommended.` };
+  if (score >= 1) return { cls: 'marginal', icon: '?', title: '? MARGINAL / INCONCLUSIVE', desc: `Score: ${score}/12 — ${notes.slice(0,3).join(' · ')}. Results are borderline. Consider extending the backtest period or adjusting risk parameters.` };
+  return { cls: 'no-edge', icon: '✗', title: '✗ NO EDGE DETECTED', desc: `Score: ${score}/12 — ${notes.slice(0,3).join(' · ')}. Strategy underperforms. Revisit entry/exit logic and risk management.` };
+}
+
+function getMonthlyReturns(equityCurve) {
+  const monthly = {};
+  for (let i = 1; i < equityCurve.length; i++) {
+    const d = equityCurve[i].date;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
+    if (!monthly[key]) monthly[key] = { start: equityCurve[i - 1].value, end: equityCurve[i].value };
+    else monthly[key].end = equityCurve[i].value;
+  }
+  return Object.entries(monthly).slice(-24).map(([k, v]) => ({
+    label: k, ret: (v.end - v.start) / v.start * 100
+  }));
+}
+
+
+// ════════════════════════════════════════════════════════
+//  6. MONTE CARLO SIMULATION
+// ════════════════════════════════════════════════════════
+
+function runMonteCarlo(trades, capital, simCount = 200) {
+  if (trades.length < 5) return null;
+  const pnlSeries = trades.map(t => t.pnl);
+  const paths = [];
+
+  for (let s = 0; s < simCount; s++) {
+    let eq = capital;
+    const path = [eq];
+    const shuffled = [...pnlSeries].sort(() => Math.random() - 0.5);
+    for (const pnl of shuffled) {
+      eq += pnl;
+      path.push(+eq.toFixed(2));
+    }
+    paths.push(path);
+  }
+
+  const finalEquities = paths.map(p => p[p.length - 1]);
+  finalEquities.sort((a, b) => a - b);
+
+  // Compute max DD per path
+  const maxDDs = paths.map(path => {
+    let peak = capital, dd = 0;
+    for (const v of path) { peak = Math.max(peak, v); dd = Math.max(dd, (peak - v) / peak); }
+    return dd * 100;
+  });
+  maxDDs.sort((a, b) => a - b);
+
+  // Percentile bands for paths (10th, 25th, 50th, 75th, 90th)
+  const idx = n => Math.floor(n / 100 * paths.length);
+  const percentilePaths = {
+    p10: paths[idx(10)], p25: paths[idx(25)], p50: paths[idx(50)],
+    p75: paths[idx(75)], p90: paths[idx(90)]
+  };
+
+  const p5  = finalEquities[Math.floor(0.05 * finalEquities.length)];
+  const p50 = finalEquities[Math.floor(0.50 * finalEquities.length)];
+  const p95 = finalEquities[Math.floor(0.95 * finalEquities.length)];
+
+  return { paths: paths.slice(0, 50), percentilePaths, finalEquities, maxDDs, p5, p50, p95 };
+}
+
+
+// ════════════════════════════════════════════════════════
+//  7. CHART RENDERING
+// ════════════════════════════════════════════════════════
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Courier New', monospace";
+Chart.defaults.font.size = 11;
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function fmtDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function renderEquityChart(equityCurve, capital) {
+  destroyChart('equityChart');
+  const labels = equityCurve.map(p => fmtDate(p.date));
+  const values = equityCurve.map(p => p.value);
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, 'rgba(0,212,255,0.3)');
+  gradient.addColorStop(1, 'rgba(0,212,255,0.01)');
+
+  chartInstances['equityChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Portfolio Value', data: values,
+        borderColor: '#00d4ff', backgroundColor: gradient,
+        borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3
+      }, {
+        label: 'Starting Capital',
+        data: new Array(values.length).fill(capital),
+        borderColor: 'rgba(100,116,139,0.5)', borderWidth: 1,
+        borderDash: [5, 5], pointRadius: 0, fill: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+        callbacks: { label: ctx => ` $${ctx.parsed.y.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+      }},
+      scales: {
+        x: { grid: { color: 'rgba(30,45,69,0.5)' }, ticks: { maxTicksLimit: 8 } },
+        y: { grid: { color: 'rgba(30,45,69,0.5)' },
+             ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+      }
+    }
+  });
+}
+
+function renderMonthlyChart(monthlyReturns) {
+  destroyChart('monthlyChart');
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  chartInstances['monthlyChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: monthlyReturns.map(m => m.label.slice(5)),
+      datasets: [{ label: 'Monthly Return %', data: monthlyReturns.map(m => +m.ret.toFixed(2)),
+        backgroundColor: monthlyReturns.map(m => m.ret >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'),
+        borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(30,45,69,0.5)' },
+             ticks: { callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderWinLossChart(trades) {
+  destroyChart('winLossChart');
+  const wins = trades.filter(t => t.pnl > 0).length;
+  const losses = trades.filter(t => t.pnl <= 0).length;
+  const ctx = document.getElementById('winLossChart').getContext('2d');
+  chartInstances['winLossChart'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Wins', 'Losses'],
+      datasets: [{ data: [wins, losses],
+        backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(239,68,68,0.7)'],
+        borderColor: ['#10b981', '#ef4444'], borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 16 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} trades (${(ctx.raw/(wins+losses)*100).toFixed(1)}%)` } }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+function renderDrawdownChart(drawdownCurve) {
+  destroyChart('drawdownChart');
+  const labels = drawdownCurve.map(p => fmtDate(p.date));
+  const values = drawdownCurve.map(p => p.value);
+  const ctx = document.getElementById('drawdownChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, 'rgba(239,68,68,0.01)');
+  gradient.addColorStop(1, 'rgba(239,68,68,0.3)');
+
+  chartInstances['drawdownChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ label: 'Drawdown %', data: values,
+        borderColor: '#ef4444', backgroundColor: gradient,
+        borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(30,45,69,0.5)' }, ticks: { maxTicksLimit: 8 } },
+        y: { grid: { color: 'rgba(30,45,69,0.5)' }, reverse: false,
+             ticks: { callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderUnderwaterChart(trades) {
+  destroyChart('underwaterChart');
+  // Compute underwater streaks
+  let streak = 0, streaks = [];
+  trades.forEach(t => {
+    if (t.pnl <= 0) streak++; else { if (streak > 0) streaks.push(streak); streak = 0; }
+  });
+  if (streak > 0) streaks.push(streak);
+  const maxStreak = Math.max(...streaks, 0);
+  const buckets = {};
+  streaks.forEach(s => { buckets[s] = (buckets[s] || 0) + 1; });
+  const labels = Array.from({length: maxStreak}, (_, i) => i + 1);
+  const counts = labels.map(l => buckets[l] || 0);
+
+  const ctx = document.getElementById('underwaterChart').getContext('2d');
+  chartInstances['underwaterChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => `${l} bar${l > 1 ? 's' : ''}`),
+      datasets: [{ label: 'Occurrences', data: counts,
+        backgroundColor: 'rgba(239,68,68,0.6)', borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(30,45,69,0.5)' }, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderPnLDistChart(trades) {
+  destroyChart('pnlDistChart');
+  const pcts = trades.map(t => +(t.pnlPct * 100).toFixed(2));
+  const min = Math.min(...pcts), max = Math.max(...pcts);
+  const bucketSize = Math.max(0.5, (max - min) / 20);
+  const buckets = {};
+  pcts.forEach(p => {
+    const b = Math.floor(p / bucketSize) * bucketSize;
+    buckets[b] = (buckets[b] || 0) + 1;
+  });
+  const sorted = Object.entries(buckets).sort((a, b) => +a[0] - +b[0]);
+  const labels = sorted.map(([k]) => (+k).toFixed(1) + '%');
+  const data   = sorted.map(([, v]) => v);
+  const colors = sorted.map(([k]) => +k >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
+
+  const ctx = document.getElementById('pnlDistChart').getContext('2d');
+  chartInstances['pnlDistChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Trades', data, backgroundColor: colors, borderRadius: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 45 } },
+        y: { grid: { color: 'rgba(30,45,69,0.5)' } }
+      }
+    }
+  });
+}
+
+function renderHoldingChart(trades) {
+  destroyChart('holdingChart');
+  const holdings = trades.map(t => t.barsHeld);
+  const maxH = Math.min(Math.max(...holdings), 100);
+  const buckets = {};
+  holdings.forEach(h => { const b = Math.min(h, maxH); buckets[b] = (buckets[b] || 0) + 1; });
+  const sorted = Object.entries(buckets).sort((a, b) => +a[0] - +b[0]);
+
+  const ctx = document.getElementById('holdingChart').getContext('2d');
+  chartInstances['holdingChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([k]) => k + ' bars'),
+      datasets: [{ label: 'Trades', data: sorted.map(([, v]) => v),
+        backgroundColor: 'rgba(124,58,237,0.7)', borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(30,45,69,0.5)' } } }
+    }
+  });
+}
+
+function renderWinRateChart(trades) {
+  destroyChart('winRateChart');
+  let wins = 0;
+  const labels = [], rates = [];
+  trades.forEach((t, i) => {
+    if (t.pnl > 0) wins++;
+    if ((i + 1) % Math.max(1, Math.floor(trades.length / 30)) === 0 || i === trades.length - 1) {
+      labels.push(`T${i + 1}`);
+      rates.push(+(wins / (i + 1) * 100).toFixed(1));
+    }
+  });
+  const ctx = document.getElementById('winRateChart').getContext('2d');
+  chartInstances['winRateChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Win Rate %', data: rates, borderColor: '#10b981', borderWidth: 2, pointRadius: 2, fill: false, tension: 0.3 },
+        { label: '50% line',   data: new Array(labels.length).fill(50), borderColor: 'rgba(100,116,139,0.4)', borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { min: 0, max: 100, grid: { color: 'rgba(30,45,69,0.5)' }, ticks: { callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderMonteCarloChart(mc, capital) {
+  destroyChart('monteCarloChart');
+  if (!mc) return;
+  const nSteps = mc.paths[0].length;
+  const labels = Array.from({length: nSteps}, (_, i) => 'T' + i);
+  const ctx = document.getElementById('monteCarloChart').getContext('2d');
+
+  const pathDatasets = mc.paths.slice(0, 40).map(path => ({
+    data: path, borderColor: 'rgba(124,58,237,0.12)', borderWidth: 1,
+    pointRadius: 0, fill: false, tension: 0
+  }));
+
+  const makePerc = (path, color, label, w) => ({
+    label, data: path, borderColor: color, borderWidth: w,
+    pointRadius: 0, fill: false, tension: 0
+  });
+
+  chartInstances['monteCarloChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        ...pathDatasets,
+        makePerc(mc.percentilePaths.p90, 'rgba(16,185,129,0.9)', 'P90', 2),
+        makePerc(mc.percentilePaths.p50, '#00d4ff', 'P50 (Median)', 2.5),
+        makePerc(mc.percentilePaths.p10, 'rgba(239,68,68,0.9)', 'P10', 2),
+        { label: 'Starting Capital', data: new Array(nSteps).fill(capital),
+          borderColor: 'rgba(100,116,139,0.5)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { grid: { color: 'rgba(30,45,69,0.3)' }, ticks: { maxTicksLimit: 8 } },
+        y: { grid: { color: 'rgba(30,45,69,0.3)' }, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+      }
+    }
+  });
+}
+
+function renderMCDistChart(mc) {
+  destroyChart('mcDistChart');
+  if (!mc) return;
+  const vals = mc.finalEquities;
+  const min = vals[0], max = vals[vals.length - 1];
+  const bucketSize = (max - min) / 20;
+  const buckets = {};
+  vals.forEach(v => {
+    const b = Math.floor((v - min) / bucketSize) * bucketSize + min;
+    buckets[b.toFixed(0)] = (buckets[b.toFixed(0)] || 0) + 1;
+  });
+  const sorted = Object.entries(buckets).sort((a, b) => +a[0] - +b[0]);
+  const ctx = document.getElementById('mcDistChart').getContext('2d');
+  chartInstances['mcDistChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([k]) => '$' + (+k/1000).toFixed(1) + 'k'),
+      datasets: [{ label: 'Sim Count', data: sorted.map(([, v]) => v),
+        backgroundColor: sorted.map(([k]) => +k >= mc.p50 ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'),
+        borderRadius: 2 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 10 } },
+                y: { grid: { color: 'rgba(30,45,69,0.5)' } } }
+    }
+  });
+}
+
+function renderMCDDChart(mc) {
+  destroyChart('mcDDChart');
+  if (!mc) return;
+  const vals = mc.maxDDs;
+  const bucketSize = (vals[vals.length - 1] - vals[0]) / 20 || 1;
+  const buckets = {};
+  vals.forEach(v => {
+    const b = +(Math.floor(v / bucketSize) * bucketSize).toFixed(1);
+    buckets[b] = (buckets[b] || 0) + 1;
+  });
+  const sorted = Object.entries(buckets).sort((a, b) => +a[0] - +b[0]);
+  const ctx = document.getElementById('mcDDChart').getContext('2d');
+  chartInstances['mcDDChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([k]) => k + '%'),
+      datasets: [{ label: 'Sim Count', data: sorted.map(([, v]) => v),
+        backgroundColor: 'rgba(239,68,68,0.65)', borderRadius: 2 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 10 } },
+                y: { grid: { color: 'rgba(30,45,69,0.5)' } } }
+    }
+  });
+}
+
+
+// ════════════════════════════════════════════════════════
+//  8. UI HELPERS
+// ════════════════════════════════════════════════════════
+
+let activeTab = 'equity';
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  ['equity','drawdown','trades','log','montecarlo'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function addLog(msg, cls = '') {
+  const terminal = document.getElementById('logTerminal');
+  terminal.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  terminal.appendChild(line);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function renderMetrics(m, capital) {
+  const grid = document.getElementById('metricsGrid');
+  document.getElementById('metricsPlaceholder').style.display = 'none';
+
+  const fmt = (v, type) => {
+    if (type === 'pct')    return (v * 100).toFixed(2) + '%';
+    if (type === 'usd')    return '$' + v.toLocaleString(undefined, {maximumFractionDigits: 0});
+    if (type === 'ratio')  return v.toFixed(2) + 'x';
+    if (type === 'num')    return v.toFixed(2);
+    if (type === 'int')    return v.toFixed(0);
+    if (type === 'bars')   return v.toFixed(1) + ' bars';
+    return v;
+  };
+
+  const cls = (v, good = 0, neutral = null) => {
+    if (neutral !== null && v >= neutral) return 'warn';
+    return v >= good ? 'pos' : 'neg';
+  };
+
+  const cards = [
+    { label: 'Total Return',    val: fmt(m.totalReturn, 'pct'),   c: cls(m.totalReturn, 0) },
+    { label: 'Ann. Return',     val: fmt(m.annReturn, 'pct'),     c: cls(m.annReturn, 0) },
+    { label: 'Net P&L',         val: fmt(m.netPnL, 'usd'),        c: cls(m.netPnL, 0) },
+    { label: 'Sharpe Ratio',    val: fmt(m.sharpe, 'num'),        c: m.sharpe >= 1 ? 'pos' : m.sharpe >= 0.5 ? 'warn' : 'neg' },
+    { label: 'Sortino Ratio',   val: fmt(m.sortino, 'num'),       c: m.sortino >= 1 ? 'pos' : m.sortino >= 0.5 ? 'warn' : 'neg' },
+    { label: 'Calmar Ratio',    val: fmt(m.calmar, 'num'),        c: m.calmar >= 0.5 ? 'pos' : 'neg' },
+    { label: 'Max Drawdown',    val: fmt(m.maxDD, 'pct'),         c: m.maxDD <= 0.15 ? 'pos' : m.maxDD <= 0.30 ? 'warn' : 'neg' },
+    { label: 'Profit Factor',   val: fmt(m.profitFactor === Infinity ? 999 : m.profitFactor, 'ratio'), c: m.profitFactor >= 1.5 ? 'pos' : m.profitFactor >= 1 ? 'warn' : 'neg' },
+    { label: 'Win Rate',        val: fmt(m.winRate, 'pct'),       c: m.winRate >= 0.5 ? 'pos' : 'neg' },
+    { label: 'Total Trades',    val: fmt(m.totalTrades, 'int'),   c: m.totalTrades >= 20 ? 'pos' : 'warn' },
+    { label: 'Expectancy',      val: fmt(m.expectancy, 'usd'),    c: cls(m.expectancy, 0) },
+    { label: 'Avg Bars Held',   val: fmt(m.avgBarsHeld, 'bars'),  c: 'neutral' },
+    { label: 'Avg Win',         val: fmt(m.avgWin, 'usd'),        c: 'pos' },
+    { label: 'Avg Loss',        val: fmt(-m.avgLoss, 'usd'),      c: 'neg' },
+    { label: 'Best Trade',      val: fmt(m.bestTrade, 'pct'),     c: 'pos' },
+    { label: 'Worst Trade',     val: fmt(m.worstTrade, 'pct'),    c: 'neg' },
+    { label: 'Max Consec. Loss',val: m.maxConsecLoss,             c: m.maxConsecLoss <= 3 ? 'pos' : m.maxConsecLoss <= 6 ? 'warn' : 'neg' },
+    { label: 'Gross Profit',    val: fmt(m.grossProfit, 'usd'),   c: 'pos' },
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="metric-card">
+      <div class="metric-label">${c.label}</div>
+      <div class="metric-value ${c.c}">${c.val}</div>
+    </div>`).join('');
+}
+
+function renderTradeLog(trades) {
+  const tbody = document.getElementById('tradeLogBody');
+  tbody.innerHTML = trades.map((t, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${fmtDate(t.entryDate)}</td>
+      <td>${fmtDate(t.exitDate)}</td>
+      <td>$${t.entryPrice.toFixed(2)}</td>
+      <td>$${t.exitPrice.toFixed(2)}</td>
+      <td>${t.barsHeld}</td>
+      <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">$${t.pnl.toFixed(2)}</td>
+      <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${(t.pnlPct * 100).toFixed(2)}%</td>
+      <td style="color:var(--muted);font-size:0.65rem">${t.exitReason}</td>
+    </tr>`).join('');
+}
+
+function renderMCStats(mc) {
+  if (!mc) return;
+  const card = document.getElementById('tab-montecarlo').querySelector('.chart-card h4');
+  if (card) card.textContent = `Monte Carlo — 200 Paths | P10: $${(mc.p5/1000).toFixed(1)}k  |  Median: $${(mc.p50/1000).toFixed(1)}k  |  P90: $${(mc.p95/1000).toFixed(1)}k`;
+}
+
+
+// ════════════════════════════════════════════════════════
+//  9. MAIN ORCHESTRATOR — runBacktest()
+// ════════════════════════════════════════════════════════
+
+async function runBacktest() {
+  const prompt = document.getElementById('strategyPrompt').value.trim();
+  if (!prompt) {
+    alert('Please enter a strategy prompt first!');
+    return;
+  }
+
+  const symbol    = document.getElementById('symbol').value;
+  const timeframe = document.getElementById('timeframe').value;
+  const period    = document.getElementById('period').value;
+  const capital   = parseFloat(document.getElementById('capital').value);
+  const posSize   = parseFloat(document.getElementById('posSize').value);
+  const commission = parseFloat(document.getElementById('commission').value);
+
+  // Reset UI
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  runBtn.textContent = '⏳ RUNNING...';
+  document.getElementById('logTerminal').innerHTML = '';
+  document.getElementById('logTerminal').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('chartsArea').style.display = 'none';
+  document.getElementById('verdictBox').style.display = 'none';
+  document.getElementById('verdictPlaceholder').style.display = 'block';
+  document.getElementById('metricsGrid').innerHTML = '';
+  document.getElementById('metricsPlaceholder').style.display = 'block';
+  document.getElementById('strategyDisplay').style.display = 'none';
+  document.getElementById('strategyPlaceholder').style.display = 'block';
+
+  await sleep(50); // let DOM update
+
+  try {
+    // Step 1 — Parse strategy
+    addLog(`Parsing strategy prompt...`, 'info');
+    setProgress(10);
+    await sleep(300);
+    const rules = parseStrategy(prompt);
+    addLog(`Detected ${rules.indicators.length} indicator(s), ${rules.entry.length} entry + ${rules.exit.length} exit rule(s)`, 'success');
+    setProgress(20);
+
+    // Show parsed rules
+    document.getElementById('strategyDisplay').innerHTML = formatParsedRules(rules, prompt);
+    document.getElementById('strategyDisplay').style.display = 'block';
+    document.getElementById('strategyPlaceholder').style.display = 'none';
+
+    await sleep(200);
+
+    // Step 2 — Generate OHLCV
+    addLog(`Generating synthetic ${symbol} ${timeframe} data (${period})...`, 'info');
+    setProgress(30);
+    await sleep(400);
+    const data = generateOHLCV(symbol, timeframe, period);
+    addLog(`Generated ${data.closes.length.toLocaleString()} bars of price data`, 'success');
+    setProgress(50);
+    await sleep(100);
+
+    // Step 3 — Run backtest
+    addLog(`Running backtest engine...`, 'info');
+    setProgress(60);
+    await sleep(300);
+    const result = runBacktestEngine(data, rules, { capital, posSize, commission });
+    const { trades, equityCurve, drawdownCurve, finalEquity, maxDD } = result;
+    addLog(`Backtest complete: ${trades.length} trades executed`, trades.length > 0 ? 'success' : 'warn');
+    setProgress(70);
+    await sleep(100);
+
+    // Step 4 — Compute metrics
+    addLog(`Computing performance metrics...`, 'info');
+    setProgress(80);
+    await sleep(200);
+    const metrics = computeMetrics(trades, equityCurve, capital, maxDD, timeframe);
+    if (!metrics) { addLog('No trades generated — adjust your strategy.', 'error'); throw new Error('No trades'); }
+    const monthlyRets = getMonthlyReturns(equityCurve);
+
+    // Step 5 — Monte Carlo
+    addLog(`Running Monte Carlo simulation (200 paths)...`, 'info');
+    setProgress(85);
+    await sleep(300);
+    const mc = runMonteCarlo(trades, capital, 200);
+    setProgress(95);
+    await sleep(100);
+
+    // Step 6 — Render everything
+    addLog(`Rendering charts and results...`, 'info');
+
+    // Show charts area
+    document.getElementById('chartsArea').style.display = 'flex';
+    document.getElementById('chartsArea').style.flexDirection = 'column';
+
+    // Ensure correct tab is shown
+    ['equity','drawdown','trades','log','montecarlo'].forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (el) el.style.display = t === activeTab ? 'block' : 'none';
+    });
+
+    // Render all charts
+    renderEquityChart(equityCurve, capital);
+    renderMonthlyChart(monthlyRets);
+    renderWinLossChart(trades);
+    renderDrawdownChart(drawdownCurve);
+    renderUnderwaterChart(trades);
+    renderPnLDistChart(trades);
+    renderHoldingChart(trades);
+    renderWinRateChart(trades);
+    renderMonteCarloChart(mc, capital);
+    renderMCDistChart(mc);
+    renderMCDDChart(mc);
+    renderMCStats(mc);
+    renderTradeLog(trades);
+
+    // Metrics
+    renderMetrics(metrics, capital);
+
+    // Edge verdict
+    const verdict = computeEdgeVerdict(metrics);
+    document.getElementById('verdictBox').className = `verdict-box ${verdict.cls}`;
+    document.getElementById('verdictTitle').textContent = verdict.title;
+    document.getElementById('verdictDesc').textContent = verdict.desc;
+    document.getElementById('verdictBox').style.display = 'block';
+    document.getElementById('verdictPlaceholder').style.display = 'none';
+
+    setProgress(100);
+    addLog(`Done! Final equity: $${finalEquity.toLocaleString(undefined, {maximumFractionDigits: 0})} | Return: ${(metrics.totalReturn * 100).toFixed(2)}%`, 'success');
+
+  } catch (err) {
+    addLog('Error: ' + err.message, 'error');
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('chartsArea').style.display = 'none';
+    console.error(err);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ RUN BACKTEST';
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ── Auto-load example on page load ──
+window.addEventListener('load', () => {
+  document.getElementById('strategyPrompt').value = EXAMPLES[0];
+});
+
+</script>
+</body>
+</html>
